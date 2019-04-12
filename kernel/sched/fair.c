@@ -11693,7 +11693,7 @@ static inline int on_null_domain(struct rq *rq)
 
 static inline int find_new_ilb(void)
 {
-	int ilb = nr_cpu_ids;
+	int ilb;
 	struct sched_domain *sd;
 	int cpu = raw_smp_processor_id();
 	struct rq *rq = cpu_rq(cpu);
@@ -11721,8 +11721,11 @@ static inline int find_new_ilb(void)
 		}
 	}
 
-	if (ilb < nr_cpu_ids && idle_cpu(ilb))
-		return ilb;
+	for_each_cpu_and(ilb, nohz.idle_cpus_mask,
+			      housekeeping_cpumask()) {
+		if (idle_cpu(ilb))
+			return ilb;
+	}
 
 	return nr_cpu_ids;
 }
