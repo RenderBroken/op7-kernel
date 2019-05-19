@@ -1,0 +1,40 @@
+KERNEL="Image.gz-dtb"
+DEVICE="op7"
+
+WORKSPACE="$HOME/workspace"
+
+# Enable ccache
+CCACHE=ccache
+export CCACHE_DIR="$HOME/.ccache/kernel/$DEVICE"
+
+# Kernel zip name
+HASH=`git rev-parse --short=8 HEAD`
+
+TAG="-$(git name-rev --tags --name-only $(git rev-parse HEAD))"
+if [[ "$TAG" =~ "~" ]]; then unset TAG; fi
+if [[ "$TAG" =~ "undefined" ]]; then unset TAG; fi
+
+KERNEL_ZIP="RZ-$DEVICE$TAG-$(date +%y%m%d)-$HASH"
+
+# Vars
+export ARCH=arm64
+export DEFCONFIG="vendor/sm8150-perf_defconfig"
+export KBUILD_BUILD_USER=joshuous
+export KBUILD_BUILD_HOST=RenderZenith
+export CROSS_COMPILE=$WORKSPACE/kernel/toolchains/gcc-aosp-4.9/bin/aarch64-linux-android-
+export LOCALVERSION=~`echo $KERNEL_ZIP`
+
+# Extra make arguments
+EXTRA_CONFIGS="CONFIG_BUILD_ARM64_DT_OVERLAY=y CONFIG_BUILD_ARM64_KERNEL_COMPRESSION_GZIP=y"
+#EXTRA_CONFIGS="CONFIG_BUILD_ARM64_DT_OVERLAY=y DTC_EXT=$(pwd)/tools/dtc"
+
+# Clang
+REAL_CC="${WORKSPACE}/kernel/toolchains/linux-x86/clang-r353983c/bin/clang" # Path to clang executable
+CLANG_TRIPLE="aarch64-linux-gnu-"
+
+# Paths
+KBUILD_OUTPUT="../out_$DEVICE"
+AK2_DIR="$WORKSPACE/kernel/AnyKernel3_$DEVICE"
+#MODULES_DIR="$AK2_DIR/ramdisk/renderzenith/modules"
+ZIP_MOVE="$WORKSPACE/kernel/builds/$DEVICE"
+ZIMAGE_DIR="$KBUILD_OUTPUT/arch/$ARCH/boot"
