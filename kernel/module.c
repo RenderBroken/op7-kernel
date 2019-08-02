@@ -1290,6 +1290,10 @@ static int check_version(const struct load_info *info,
 	if (!strncmp("wlan", mod->name, 4))
 		return 1;
 
+	/* Force opchain to load */
+	if (!strncmp("opchain", mod->name, 7))
+		return 1;
+
 	/* Exporting module didn't supply crcs?  OK, we're already tainted. */
 	if (!crc)
 		return 1;
@@ -3027,6 +3031,9 @@ static int check_modinfo(struct module *mod, struct load_info *info, int flags)
 	int err;
 
 	if(!strncmp("wlan", mod->name, 4))
+		goto end;
+
+	if(!strncmp("opchain", mod->name, 7))
 		goto end;
 
 	if (flags & MODULE_INIT_IGNORE_VERMAGIC)
