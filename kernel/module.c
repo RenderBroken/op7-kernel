@@ -1288,6 +1288,10 @@ static int check_version(const struct load_info *info,
 	if (!strncmp("wlan", mod->name, 4))
 		return 1;
 
+	/* Force msm_11ad_proxy to load */
+	if (!strncmp("msm_11ad_proxy", mod->name, 4))
+		return 1;
+
 	/* Force opchain to load */
 	if (!strncmp("opchain", mod->name, 7))
 		return 1;
@@ -3029,6 +3033,9 @@ static int check_modinfo(struct module *mod, struct load_info *info, int flags)
 	int err;
 
 	if(!strncmp("wlan", mod->name, 4))
+		goto end;
+
+	if(!strncmp("msm_11ad_proxy", mod->name, 4))
 		goto end;
 
 	if(!strncmp("opchain", mod->name, 7))
