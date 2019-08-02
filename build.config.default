@@ -18,7 +18,7 @@ KERNEL_ZIP="RZ-$DEVICE$TAG-$(date +%y%m%d)-$HASH"
 
 # Vars
 export ARCH=arm64
-export DEFCONFIG="vendor/sm8150-perf_defconfig"
+export DEFCONFIG="oneplus7_defconfig"
 export KBUILD_BUILD_USER=joshuous
 export KBUILD_BUILD_HOST=RenderZenith
 export CROSS_COMPILE=$WORKSPACE/kernel/toolchains/gcc-aosp-4.9/bin/aarch64-linux-android-
