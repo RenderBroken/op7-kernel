@@ -1256,12 +1256,12 @@ TRACE_EVENT_CONDITION(sched_overutilized,
  */
 TRACE_EVENT(sched_find_best_target,
 
-	TP_PROTO(struct task_struct *tsk, bool prefer_idle,
+	TP_PROTO(struct task_struct *tsk, bool prefer_idle, bool stune_boosted,
 		unsigned long min_util, int start_cpu,
 		int best_idle, int best_active, int most_spare_cap, int target,
 		int backup_cpu),
 
-	TP_ARGS(tsk, prefer_idle, min_util, start_cpu,
+	TP_ARGS(tsk, prefer_idle, stune_boosted, min_util, start_cpu,
 		best_idle, best_active, most_spare_cap, target,
 		backup_cpu),
 
@@ -1270,6 +1270,7 @@ TRACE_EVENT(sched_find_best_target,
 		__field( pid_t,	pid			)
 		__field( unsigned long,	min_util	)
 		__field( bool,	prefer_idle		)
+		__field(bool, stune_boosted		)
 		__field( int,	start_cpu		)
 		__field( int,	best_idle		)
 		__field( int,	best_active		)
@@ -1283,6 +1284,7 @@ TRACE_EVENT(sched_find_best_target,
 		__entry->pid		= tsk->pid;
 		__entry->min_util	= min_util;
 		__entry->prefer_idle	= prefer_idle;
+		__entry->stune_boosted		= stune_boosted;
 		__entry->start_cpu 	= start_cpu;
 		__entry->best_idle	= best_idle;
 		__entry->best_active	= best_active;
@@ -1291,10 +1293,10 @@ TRACE_EVENT(sched_find_best_target,
 		__entry->backup_cpu	= backup_cpu;
 	),
 
-	TP_printk("pid=%d comm=%s prefer_idle=%d start_cpu=%d "
+	TP_printk("pid=%d comm=%s prefer_idle=%d stune_boosted=%d start_cpu=%d "
 		  "best_idle=%d best_active=%d most_spare_cap=%d target=%d backup=%d",
 		__entry->pid, __entry->comm,
-		__entry->prefer_idle, __entry->start_cpu,
+		__entry->prefer_idle, __entry->stune_boosted, __entry->start_cpu,
 		__entry->best_idle, __entry->best_active,
 		__entry->most_spare_cap,
 		__entry->target,
@@ -1447,10 +1449,10 @@ TRACE_EVENT(sched_task_util,
 
 	TP_PROTO(struct task_struct *p, int next_cpu, int backup_cpu,
 		int target_cpu, bool sync, bool need_idle, int fastpath,
-		bool placement_boost, int rtg_cpu, bool ux_task, u64 start_t),
+		bool placement_boost, int rtg_cpu, bool ux_task, u64 start_t, bool stune_boosted),
 
 	TP_ARGS(p, next_cpu, backup_cpu, target_cpu, sync, need_idle, fastpath,
-		placement_boost, rtg_cpu, ux_task, start_t),
+		placement_boost, rtg_cpu, ux_task, start_t, stune_boosted),
 
 	TP_STRUCT__entry(
 		__field(int, pid			)
@@ -1467,6 +1469,7 @@ TRACE_EVENT(sched_task_util,
 		__field(int, rtg_cpu			)
 		__field(u64, latency			)
 		__field(bool, ux_task			)
+		__field(bool, stune_boosted		)
 	),
 
 	TP_fast_assign(
@@ -1484,13 +1487,15 @@ TRACE_EVENT(sched_task_util,
 		__entry->rtg_cpu		= rtg_cpu;
 		__entry->latency		= (sched_clock() - start_t);
 		__entry->ux_task		= ux_task;
+		__entry->stune_boosted		= stune_boosted;
 	),
 
-	TP_printk("pid=%d comm=%s util=%lu prev_cpu=%d next_cpu=%d backup_cpu=%d target_cpu=%d sync=%d need_idle=%d fastpath=%d placement_boost=%d rtg_cpu=%d ux_task=%d latency=%llu",
+	TP_printk("pid=%d comm=%s util=%lu prev_cpu=%d next_cpu=%d backup_cpu=%d target_cpu=%d sync=%d need_idle=%d fastpath=%d placement_boost=%d rtg_cpu=%d ux_task=%d latency=%llu stune_boosted=%d",
 		__entry->pid, __entry->comm, __entry->util, __entry->prev_cpu,
 		__entry->next_cpu, __entry->backup_cpu, __entry->target_cpu,
 		__entry->sync, __entry->need_idle, __entry->fastpath,
-		__entry->placement_boost, __entry->rtg_cpu, __entry->ux_task, __entry->latency)
+		__entry->placement_boost, __entry->rtg_cpu, __entry->ux_task, __entry->latency,
+		__entry->stune_boosted)
 )
 #else
 TRACE_EVENT(sched_task_util,
