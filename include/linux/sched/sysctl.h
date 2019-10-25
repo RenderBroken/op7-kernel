@@ -46,9 +46,15 @@ extern unsigned int sysctl_sched_asym_cap_sibling_freq_match_pct;
 extern unsigned int sysctl_sched_coloc_downmigrate_ns;
 extern unsigned int sysctl_sched_task_unfilter_nr_windows;
 extern unsigned int sysctl_sched_window_stats_policy;
+extern unsigned int sysctl_sched_ravg_window_nr_ticks;
 
 extern int
 walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
+			 void __user *buffer, size_t *lenp,
+			 loff_t *ppos);
+
+extern int
+sched_ravg_window_handler(struct ctl_table *table, int write,
 			 void __user *buffer, size_t *lenp,
 			 loff_t *ppos);
 
