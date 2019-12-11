@@ -7479,14 +7479,6 @@ static int start_cpu(struct task_struct *p, bool boosted,
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	int start_cpu = -1;
-//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
-	bool is_uxtop = is_opc_task(p, UT_FORE);
-
-// tedlin@ASTI 2019/06/12 add for CONFIG_HOUSTON
-	if (is_uxtop && current->ravg.demand_scaled >= p->ravg.demand_scaled) {
-		/* add 'current' into RTG list */
-		ht_rtg_list_add_tail(current);
-	}
 
 	if (boosted) {
 		if (rd->mid_cap_orig_cpu != -1 &&
