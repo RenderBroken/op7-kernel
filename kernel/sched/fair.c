@@ -5890,17 +5890,6 @@ cpu_is_in_target_set(struct task_struct *p, int cpu)
 	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
 }
 
-static inline bool
-bias_to_waker_cpu(struct task_struct *p, int cpu, struct cpumask *rtg_target)
-{
-	bool base_test = cpumask_test_cpu(cpu, &p->cpus_allowed) &&
-			cpu_active(cpu) && task_fits_max(p, cpu) &&
-			cpu_is_in_target_set(p, cpu);
-	bool rtg_test = rtg_target && cpumask_test_cpu(cpu, rtg_target);
-
-	return base_test && (!rtg_target || rtg_test);
-}
-
 /*
  * CPU candidates.
  *
@@ -8246,16 +8235,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 
 	if (trace_sched_task_util_enabled())
 		start_t = sched_clock();
-
-	if (need_idle)
-		sync = 0;
-
-	if (sysctl_sched_sync_hint_enable && sync &&
-				bias_to_waker_cpu(p, cpu, rtg_target)) {
-		target_cpu = cpu;
-		fbt_env.fastpath = SYNC_WAKEUP;
-		goto out;
-	}
 
 	/* prepopulate energy diff environment */
 	eenv = get_eenv(p, prev_cpu);
