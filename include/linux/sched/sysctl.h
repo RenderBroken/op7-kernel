@@ -48,6 +48,7 @@ extern unsigned int sysctl_sched_task_unfilter_period;
 extern unsigned int sysctl_sched_window_stats_policy;
 extern unsigned int sysctl_sched_ravg_window_nr_ticks;
 extern unsigned int sysctl_sched_dynamic_ravg_window_enable;
+extern unsigned int sysctl_sched_prefer_spread;
 
 extern int
 walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
