@@ -7456,7 +7456,10 @@ static int start_cpu(struct task_struct *p, bool boosted,
 		ht_rtg_list_add_tail(current);
 	}
 
-	if (boosted || sync_boost) {
+	if (sync_boost && rd->mid_cap_orig_cpu != -1)
+		return rd->mid_cap_orig_cpu;
+
+	if (boosted) {
 		if (rd->mid_cap_orig_cpu != -1 &&
 		    task_fits_max(p, rd->mid_cap_orig_cpu))
 			return rd->mid_cap_orig_cpu;
