@@ -7403,12 +7403,12 @@ static bool is_packing_eligible(struct task_struct *p, int target_cpu,
 }
 
 static int get_start_cpu(struct task_struct *p, bool boosted,
-		     bool sync_boost, struct cpumask *rtg_target)
+			struct cpumask *rtg_target)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	int start_cpu = -1;
 
-	if (boosted || sync_boost) {
+	if (boosted) {
 		if (rd->mid_cap_orig_cpu != -1 &&
 		    task_fits_max(p, rd->mid_cap_orig_cpu))
 			return rd->mid_cap_orig_cpu;
@@ -7444,7 +7444,7 @@ enum fastpaths {
 };
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
-				   bool boosted, bool sync_boost, bool prefer_idle,
+				   bool boosted, bool prefer_idle,
 				   struct find_best_target_env *fbt_env)
 {
 	unsigned long min_util = boosted_task_util(p);
@@ -8162,7 +8162,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	u64 start_t = 0;
 	int next_cpu = -1, backup_cpu = -1;
 	int boosted = (schedtune_task_boost(p) > 0);
-	bool sync_boost = false;
 	int start_cpu = get_start_cpu(p, boosted, rtg_target);
 
 	if (start_cpu < 0)
@@ -8184,9 +8183,8 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	}
 
 	if (use_sync_boost) {
-		sync_boost = sync && cpu >= cpu_rq(cpu)->rd->mid_cap_orig_cpu;
-	} else {
-		sync_boost = false;
+		if (sync && cpu >= cpu_rq(cpu)->rd->mid_cap_orig_cpu)
+			start_cpu = get_start_cpu(p, true, rtg_target);
 	}
 
 	/* prepopulate energy diff environment */
@@ -8246,7 +8244,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
-					      boosted, sync_boost, prefer_idle, &fbt_env);
+					      boosted, prefer_idle, &fbt_env);
 		if (target_cpu < 0)
 			goto out;
 
@@ -8297,7 +8295,7 @@ out:
 	trace_sched_task_util(p, next_cpu, backup_cpu, target_cpu, sync,
 			need_idle, fbt_env.fastpath, placement_boost,
 			rtg_target ? cpumask_first(rtg_target) : -1,
-			start_t, boosted, sync_boost);
+			start_t, boosted);
 	return target_cpu;
 }
 
