@@ -12,6 +12,7 @@
 
 #include "sched.h"
 #include "walt.h"
+#include <linux/devfreq_boost.h>
 #include <linux/of.h>
 #include <linux/sched/core_ctl.h>
 #include <trace/events/sched.h>
@@ -220,10 +221,13 @@ static void _sched_set_boost(int type)
 {
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	if (type > 0)
+	if (type > 0) {
 		do_stune_sched_boost("top-app", &boost_slot);
-	else
+		devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
+		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW);
+	} else {
 		reset_stune_boost("top-app", boost_slot);
+	}
 #endif // CONFIG_DYNAMIC_STUNE_BOOST
 
 	if (type == 0)
