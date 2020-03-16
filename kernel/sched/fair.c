@@ -7413,7 +7413,7 @@ static bool is_packing_eligible(struct task_struct *p, int target_cpu,
 	return (estimated_capacity <= capacity_curr_of(target_cpu));
 }
 
-static int get_start_cpu(struct task_struct *p,
+static int get_start_cpu(struct task_struct *p, bool sync_boost,
 			struct cpumask *rtg_target)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
@@ -7443,6 +7443,9 @@ static int get_start_cpu(struct task_struct *p,
 	if (start_cpu == -1 || start_cpu == rd->max_cap_orig_cpu)
 		return start_cpu;
 
+	if (sync_boost && rd->mid_cap_orig_cpu != -1)
+		return rd->mid_cap_orig_cpu;
+
 	/* Where the task should land based on its demand */
 	if (start_cpu == rd->min_cap_orig_cpu &&
 			!task_demand_fits(p, start_cpu)) {
@@ -7464,7 +7467,7 @@ enum fastpaths {
 };
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
-				   bool boosted, bool sync_boost, bool prefer_idle,
+				   bool boosted, bool prefer_idle,
 				   struct find_best_target_env *fbt_env)
 {
 	unsigned long min_util = boosted_task_util(p);
@@ -8183,7 +8186,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	int next_cpu = -1, backup_cpu = -1;
 	int boosted = (schedtune_task_boost(p) > 0);
 	bool sync_boost = false;
-	int start_cpu = get_start_cpu(p, rtg_target);
+	int start_cpu = get_start_cpu(p, sync_boost, rtg_target);
 
 	if (start_cpu < 0)
 		return -1;
@@ -8205,8 +8208,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 
 	if (use_sync_boost) {
 		sync_boost = sync && cpu >= cpu_rq(cpu)->rd->mid_cap_orig_cpu;
-	} else {
-		sync_boost = false;
+		start_cpu = get_start_cpu(p, sync_boost, rtg_target);
 	}
 
 	/* prepopulate energy diff environment */
@@ -8266,7 +8268,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
-					      boosted, sync_boost, prefer_idle, &fbt_env);
+					      boosted, prefer_idle, &fbt_env);
 		if (target_cpu < 0)
 			goto out;
 
