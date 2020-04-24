@@ -5830,9 +5830,11 @@ static ssize_t fresh_rate_read(struct file *file, char __user *user_buf, size_t 
 	int ret = 0;
 	char fresh_rate[4] = {0};
 
-	if (mode_fps == 90)
+	if (mode_fps == 90) {
+		sched_set_refresh_rate(90)
 		strcpy(fresh_rate, "90");
 	else if (mode_fps == 60)
+		sched_set_refresh_rate(60)
 		strcpy(fresh_rate, "60");
 	else
 		strcpy(fresh_rate, "-1");
