@@ -43,6 +43,9 @@
 #include <linux/oem/oneplus_healthinfo.h>
 #endif
 
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+#include "../coretech/uxcore/opchain_helper.h"
+
 // tedlin@ASTI 2019/06/12 add for CONFIG_HOUSTON
 #include <oneplus/houston/houston_helper.h>
 
@@ -5275,6 +5278,9 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_entity *se = &p->se;
 	int task_new = !(flags & ENQUEUE_WAKEUP);
 
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	opc_task_switch(true, cpu_of(rq), p, 0);
+
 #ifdef CONFIG_SCHED_WALT
 	p->misfit = !task_fits_max(p, rq->cpu);
 #endif
@@ -5366,6 +5372,9 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
 	int task_sleep = flags & DEQUEUE_SLEEP;
+
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	opc_task_switch(false, cpu_of(rq), p, rq->clock);
 
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
@@ -7432,6 +7441,19 @@ static int get_start_cpu(struct task_struct *p)
 			task_boost_policy(p) == SCHED_BOOST_ON_BIG;
 	bool task_skip_min = (sched_boost() != CONSERVATIVE_BOOST)
 				&& get_rtg_status(p) && p->unfilter;
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	bool is_uxtop = is_opc_task(p, UT_FORE);
+
+// tedlin@ASTI 2019/06/12 add for CONFIG_HOUSTON
+	if (is_uxtop && current->ravg.demand_scaled >= p->ravg.demand_scaled) {
+		/* add 'current' into RTG list */
+		ht_rtg_list_add_tail(current);
+	}
+
+	if (is_uxtop && task_sched_boost(p)) {
+		start_cpu = rd->mid_cap_orig_cpu == -1 ?
+			rd->max_cap_orig_cpu : rd->mid_cap_orig_cpu;
+	}
 
 	/*
 	 * note about min/mid/max_cap_orig_cpu - either all of them will be -ve
@@ -7442,6 +7464,7 @@ static int get_start_cpu(struct task_struct *p)
 		start_cpu = rd->mid_cap_orig_cpu == -1 ?
 			rd->max_cap_orig_cpu : rd->mid_cap_orig_cpu;
 	}
+
 	if (start_cpu == -1 || start_cpu == rd->max_cap_orig_cpu)
 		return start_cpu;
 
@@ -8127,6 +8150,8 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	int next_cpu = -1, backup_cpu = -1;
 	int boosted = (schedtune_task_boost(p) > 0 || per_task_boost(p) > 0);
 	int start_cpu = get_start_cpu(p);
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	bool is_uxtop = is_opc_task(p, UT_FORE);
 
 	if (start_cpu < 0)
 		return -1;
@@ -8143,8 +8168,10 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	if (sync && (need_idle || (is_rtg && curr_is_rtg)))
 		sync = 0;
 
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
 	if (sysctl_sched_sync_hint_enable && sync &&
-				bias_to_this_cpu(p, cpu, start_cpu)) {
+				bias_to_this_cpu(p, cpu, start_cpu) &&
+				opc_check_uxtop_cpu(is_uxtop, cpu)) {
 		target_cpu = cpu;
 		fbt_env.fastpath = SYNC_WAKEUP;
 		goto out;
@@ -8228,8 +8255,9 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		if (p->state == TASK_WAKING)
 			delta = task_util(p);
 #endif
+//morison@ASTI, 2019/7/24, modify for uxrealm CONFIG_OPCHAIN
 		if (task_placement_boost_enabled(p) || fbt_env.need_idle || boosted ||
-		    is_rtg || __cpu_overutilized(prev_cpu, delta) ||
+		    is_rtg || is_uxtop || __cpu_overutilized(prev_cpu, delta) ||
 		    !task_fits_max(p, prev_cpu) || cpu_isolated(prev_cpu))
 			goto out;
 
@@ -9003,6 +9031,9 @@ enum group_type {
 #define LBF_SOME_PINNED	0x08
 #define LBF_IGNORE_BIG_TASKS 0x100
 #define LBF_IGNORE_PREFERRED_CLUSTER_TASKS 0x200
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+#define LBF_IGNORE_UX_TOP 0x800
+#define LBF_IGNORE_SLAVE 0xC00
 
 struct lb_env {
 	struct sched_domain	*sd;
@@ -9203,6 +9234,13 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 		return 0;
 #endif
 
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	if (env->flags & LBF_IGNORE_UX_TOP && is_opc_task(p, UT_FORE))
+		return 0;
+
+	if (env->flags & LBF_IGNORE_SLAVE && UTASK_SLAVE(p))
+		return 0;
+
 	if (task_running(env->src_rq, p)) {
 		schedstat_inc(p->se.statistics.nr_failed_migrations_running);
 		return 0;
@@ -9299,6 +9337,8 @@ static int detach_tasks(struct lb_env *env)
 	unsigned long load = 0;
 	int detached = 0;
 	int orig_loop = env->loop;
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	int src_claim = opc_get_claim_on_cpu(env->src_cpu);
 
 	lockdep_assert_held(&env->src_rq->lock);
 
@@ -9308,8 +9348,14 @@ static int detach_tasks(struct lb_env *env)
 	if (!same_cluster(env->dst_cpu, env->src_cpu))
 		env->flags |= LBF_IGNORE_PREFERRED_CLUSTER_TASKS;
 
-	if (capacity_orig_of(env->dst_cpu) < capacity_orig_of(env->src_cpu))
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+	if (capacity_orig_of(env->dst_cpu) < capacity_orig_of(env->src_cpu)) {
 		env->flags |= LBF_IGNORE_BIG_TASKS;
+		if (src_claim == 1)
+			env->flags |= LBF_IGNORE_UX_TOP | LBF_IGNORE_SLAVE;
+		else if (src_claim == -1)
+			env->flags |= LBF_IGNORE_SLAVE;
+	}
 
 redo:
 	while (!list_empty(tasks)) {
@@ -9396,6 +9442,9 @@ next:
 		tasks = &env->src_rq->cfs_tasks;
 		env->flags &= ~(LBF_IGNORE_BIG_TASKS |
 				LBF_IGNORE_PREFERRED_CLUSTER_TASKS);
+//curtis@ASTI, 2019/4/29, add for uxrealm CONFIG_OPCHAIN
+		if (env->flags & LBF_IGNORE_SLAVE)
+			env->flags &= ~LBF_IGNORE_SLAVE;
 
 		env->loop = orig_loop;
 		goto redo;

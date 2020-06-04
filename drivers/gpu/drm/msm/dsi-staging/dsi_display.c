@@ -5829,25 +5829,22 @@ static ssize_t fresh_rate_read(struct file *file, char __user *user_buf, size_t 
 {
 	int ret = 0;
 	char fresh_rate[4] = {0};
-	enum sched_fps;
 
 	if (mode_fps == 90)
 	{
-		sched_fps = FPS90;
+		sched_set_refresh_rate(FPS90);
 		strcpy(fresh_rate, "90");
 	}
 	else if (mode_fps == 60)
 	{
-		sched_fps = FPS60;
+		sched_set_refresh_rate(FPS60);
 		strcpy(fresh_rate, "60");
 	}
 	else
 	{
-		sched_fps = FPS60;
+		sched_set_refresh_rate(FPS60);
 		strcpy(fresh_rate, "-1");
 	}
-
-	sched_set_refresh_rate(sched_fps);
 
 	pr_info("fresh_rate : %s\n", fresh_rate);
 	ret = simple_read_from_buffer(user_buf, count, ppos, fresh_rate, strlen(fresh_rate));

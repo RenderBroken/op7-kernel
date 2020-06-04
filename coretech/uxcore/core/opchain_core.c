@@ -88,7 +88,7 @@ static int ctech_opc_get_claim_on_cpu(int cpu, void *rq);
 #if UX_DEBUG
 #include <linux/sched.h>
 #include <linux/module.h>
-#include "opchain_helper.h"
+#include "../opchain_helper.h"
 int opchain_status_show_core(char *buf, const struct kernel_param *kp)
 {
 	unsigned int most_recent = atomic_read(&ux_chain.lru_pos), size = 0;

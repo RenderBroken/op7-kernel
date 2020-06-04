@@ -14,7 +14,7 @@
 #ifndef _LINUX_OPCHAIN_DEFINE_H
 #define _LINUX_OPCHAIN_DEFINE_H
 
-#define UX_DEBUG			0
+#define UX_DEBUG			1
 #define UTASK				0
 #define UT_CLK_BASE			0x01
 #define UT_ETASK			0x02
